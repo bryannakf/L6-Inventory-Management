@@ -7,8 +7,11 @@ from functools import wraps
 import sqlite3
 import os
 import re
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 app = Flask(__name__)
+limiter = Limiter(get_remote_address, app=app)
 
 app.config.from_mapping(
     DATABASE="/app/data/data.db"
@@ -112,6 +115,7 @@ def register():
 # LOGIN
 # -------------------------
 @app.route("/login", methods=["GET", "POST"])
+@limiter.limit("5 per minute")
 def login():
     db = get_db()
 
