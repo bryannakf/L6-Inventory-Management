@@ -3,6 +3,7 @@ from db import get_db, close_db, init_app
 from models.inventory import *
 from models.datacenter import add_datacenter, get_datacenters, update_datacenter, delete_datacenter
 from werkzeug.security import generate_password_hash, check_password_hash
+from functools import wraps
 import sqlite3
 import os
 
@@ -37,7 +38,21 @@ def ensure_db():
 def initdb_command():
     init_db()
     print("Database initialized.")
-    
+
+#-------------------------
+# LOGIN REQUIRED DECORATOR
+#------------------------
+
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if "user_id" not in session:
+            flash("Please log in.")
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return decorated
+
+
 # -------------------------
 # ROUTES
 # -------------------------
@@ -119,20 +134,25 @@ def admin():
     return render_template("admin.html")
 
 @app.route("/user")
+@login_required
 def user():
     if not session.get("username"):
         return redirect(url_for("login"))
     return render_template("user.html")
 
 @app.route("/inventory")
+@app.route("/inventory")
+@login_required
 def inventory():
     return render_template("inventory.html")
 
 @app.route("/datacenter")
+@login_required
 def datacenter():
     return render_template("datacenter.html")
 
 @app.route("/actionsAudit")
+@login_required
 def actionsAudit():
     if session.get("role") != "admin":
         return redirect(url_for("login"))
@@ -142,6 +162,7 @@ def actionsAudit():
 # INVENTORY API
 # -------------------------
 @app.route("/api/item", methods=["POST"])
+@login_required
 def api_add_item():
     data = request.get_json()
 
@@ -155,6 +176,7 @@ def api_add_item():
 
 
 @app.route("/api/items")
+@login_required
 def api_get_items():
     items = get_items()
     return jsonify([
@@ -169,6 +191,7 @@ def api_get_items():
 
 
 @app.route("/api/item/<int:id>", methods=["PUT"])
+@login_required
 def api_update_item(id):
     data = request.get_json()
 
@@ -185,6 +208,7 @@ def api_update_item(id):
 
 
 @app.route("/api/item/<int:id>", methods=["DELETE"])
+@login_required
 def api_delete_item(id):
     delete_item(id)
     return jsonify({"message": "Deleted"})
@@ -194,6 +218,7 @@ def api_delete_item(id):
 # DATACENTER API
 # -------------------------
 @app.route("/api/datacenter", methods=["POST"])
+@login_required
 def api_add_datacenter():
     data = request.get_json()
 
@@ -206,6 +231,7 @@ def api_add_datacenter():
 
 
 @app.route("/api/datacenters")
+@login_required
 def api_get_datacenters():
     dcs = get_datacenters()
     return jsonify([
@@ -219,6 +245,7 @@ def api_get_datacenters():
 
 
 @app.route("/api/datacenter/<int:id>", methods=["PUT"])
+@login_required
 def api_update_datacenter(id):
     data = request.get_json()
 
@@ -227,6 +254,7 @@ def api_update_datacenter(id):
 
 
 @app.route("/api/datacenter/<int:id>", methods=["DELETE"])
+@login_required
 def api_delete_datacenter(id):
     delete_datacenter(id)
     return jsonify({"message": "Deleted"})
@@ -236,6 +264,7 @@ def api_delete_datacenter(id):
 # AUDIT LOG
 # -------------------------
 @app.route("/api/actionsAudit")
+@login_required
 def api_actions():
     db = get_db()
 
