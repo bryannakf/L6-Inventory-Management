@@ -197,6 +197,52 @@ document
       });
   });
 
+document.addEventListener("DOMContentLoaded", () => {
+  if (document.getElementById("deletedDatacentersTable")) {
+    loadDeletedDatacenters();
+  }
+});
+
+function loadDeletedDatacenters() {
+  fetch("/api/datacenters/deleted")
+    .then((res) => res.json())
+    .then((data) => {
+      const tbody = document.querySelector("#deletedDatacentersTable tbody");
+      tbody.innerHTML = "";
+
+      data.forEach((dc) => {
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+          <td>${dc.id}</td>
+          <td>${dc.location}</td>
+          <td>${dc.deleted_at}</td>
+          <td>
+            <button onclick="restoreDatacenter(${dc.id})">Restore</button>
+          </td>
+        `;
+
+        tbody.appendChild(row);
+      });
+    })
+    .catch((err) => console.error("Failed to load deleted datacenters", err));
+}
+
+function restoreDatacenter(id) {
+  if (!confirm("Restore this datacenter?")) return;
+
+  fetch(`/api/datacenter/restore/${id}`, {
+    method: "POST",
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      alert(data.message || "Datacenter restored");
+      loadDeletedDatacenters(); // refresh deleted list
+      getDatacenters(); // refresh active datacenter list
+    })
+    .catch((err) => console.error("Restore error", err));
+}
+
 // Message display
 function showMessage(text, color) {
   let msgDiv = document.getElementById("message");

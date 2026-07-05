@@ -22,6 +22,8 @@
 
 (Powershell) $env:SECRET_KEY = "mySuperRandomKey123!@#"
 
+docker run -it -p 8000:5000 -e "SECRET_KEY=mySuperRandomKey123!@#" -v "${PWD}\inventory_management:/app/inventory_management" -v "${PWD}\data:/app/data" flask-app
+
 run: if len(password) < 8:
             flash("Password must be at least 8 characters.")
             return redirect(url_for("register"))

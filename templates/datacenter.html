@@ -95,6 +95,23 @@
     </div>
     <div id="datacenterList"></div>
 
+    {% if session.get('role') == 'admin' %}
+    <div class="form-section">
+      <h2>Deleted Items (Admin Only)</h2>
+      <table id="deletedDatacentersTable">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Datacenter</th>
+            <th>Deleted At</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    {% endif %}
+
     <!-- Javascript file -->
     <script src="/static/js/datacenter.js"></script>
   </body>

@@ -39,3 +39,4 @@ def delete_datacenter(datacenter_id):
         ("admin", f"Deleted datacenter {datacenter_id}")
     )
     db.commit()
+    

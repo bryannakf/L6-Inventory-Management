@@ -199,6 +199,54 @@ document
       });
   });
 
+document.addEventListener("DOMContentLoaded", () => {
+  if (document.getElementById("deletedItemsTable")) {
+    loadDeletedItems();
+  }
+});
+
+function loadDeletedItems() {
+  fetch("/api/items/deleted")
+    .then((res) => res.json())
+    .then((data) => {
+      const tbody = document.querySelector("#deletedItemsTable tbody");
+      tbody.innerHTML = "";
+
+      data.forEach((item) => {
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+          <td>${item.id}</td>
+          <td>${item.item_name}</td>
+          <td>${item.deleted_at}</td>
+          <td>
+            <button onclick="restoreItem(${item.id})">
+              Restore
+            </button>
+          </td>
+        `;
+
+        tbody.appendChild(row);
+      });
+    })
+    .catch((err) => console.error("Failed to load deleted items", err));
+}
+
+function restoreItem(id) {
+  if (!confirm("Restore this item?")) return;
+
+  fetch(`/api/item/restore/${id}`, {
+    method: "POST",
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      alert(data.message || "Item restored");
+      loadDeletedItems(); // refresh deleted list
+      getItems(); // refresh active inventory list (if you have it)
+    })
+    .catch((err) => console.error("Restore error", err));
+}
+
 // Display message
 function showMessage(text, color) {
   let msgDiv = document.getElementById("message");
