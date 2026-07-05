@@ -21,7 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (adminLink) {
     adminLink.addEventListener("click", function (e) {
       const confirmed = confirm(
-        "Are you sure you want to leave the application?"
+        "Are you sure you want to leave the application?",
       );
       if (!confirmed) {
         e.preventDefault();
@@ -36,7 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (userLink) {
     userLink.addEventListener("click", function (e) {
       const confirmed = confirm(
-        "Are you sure you want to leave the application?"
+        "Are you sure you want to leave the application?",
       );
       if (!confirmed) {
         e.preventDefault();
@@ -68,14 +68,27 @@ function getDatacenters() {
     });
 }
 
-
 // Add datacenter
 document
   .getElementById("addDatacenterForm")
   .addEventListener("submit", function (e) {
     e.preventDefault();
     const location = document.getElementById("addLocation").value.trim();
-    const capacity = document.getElementById("addCapacity").value;
+    let capacity;
+    try {
+      capacity = parseInt(document.getElementById("addCapacity").value, 10);
+      if (isNaN(capacity)) {
+        showMessage("Capacity must be a number", "red");
+        return;
+      }
+      if (capacity < 0) {
+        showMessage("Capacity cannot be negative", "red");
+        return;
+      }
+    } catch (error) {
+      showMessage("Capacity must be a number", "red");
+      return;
+    }
 
     if (!location || !capacity) {
       showMessage("Please enter both location and capacity", "red");
@@ -104,7 +117,21 @@ document
   .addEventListener("submit", function (e) {
     e.preventDefault();
     const id = document.getElementById("updateDatacenterID").value;
-    const capacity = document.getElementById("updateCapacity").value;
+    let capacity;
+    try {
+      capacity = parseInt(document.getElementById("updateCapacity").value, 10);
+      if (isNaN(capacity)) {
+        showMessage("Capacity must be a number", "red");
+        return;
+      }
+      if (capacity < 0) {
+        showMessage("Capacity cannot be negative", "red");
+        return;
+      }
+    } catch (error) {
+      showMessage("Capacity must be a number", "red");
+      return;
+    }
 
     if (!id || !capacity) {
       showMessage("Please enter both ID and new capacity", "red");
@@ -147,7 +174,7 @@ document
     }
     //prompt for confirmation
     const confirmed = confirm(
-      `Are you sure you want to delete datacenter with ID ${id}?`
+      `Are you sure you want to delete datacenter with ID ${id}?`,
     );
     if (!confirmed) return;
 

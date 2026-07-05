@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (adminLink) {
     adminLink.addEventListener("click", function (e) {
       const confirmed = confirm(
-        "Are you sure you want to leave the application?"
+        "Are you sure you want to leave the application?",
       );
       if (!confirmed) {
         e.preventDefault();
@@ -37,7 +37,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (userLink) {
     userLink.addEventListener("click", function (e) {
       const confirmed = confirm(
-        "Are you sure you want to leave the application?"
+        "Are you sure you want to leave the application?",
       );
       if (!confirmed) {
         e.preventDefault();
@@ -74,8 +74,27 @@ function getItems() {
 document.getElementById("addItemForm").addEventListener("submit", function (e) {
   e.preventDefault();
   const item_name = document.getElementById("addItem_name").value;
-  const quantity = document.getElementById("addQuantity").value;
+  if (!/^[A-Za-z0-9\s]{1,50}$/.test(item_name)) {
+    showMessage("Invalid item name", "red");
+    return;
+  }
+
+  let quantity;
   const datacenter_id = document.getElementById("addDatacenterID").value;
+  try {
+    quantity = parseInt(document.getElementById("addQuantity").value, 10);
+    if (isNaN(quantity)) {
+      showMessage("Quantity must be a number", "red");
+      return;
+    }
+    if (quantity < 0) {
+      showMessage("Quantity cannot be negative", "red");
+      return;
+    }
+  } catch (error) {
+    showMessage("Quantity must be a number", "red");
+    return;
+  }
 
   fetch("/api/item", {
     method: "POST",
@@ -99,8 +118,29 @@ document
   .addEventListener("submit", function (e) {
     e.preventDefault();
     const id = document.getElementById("updateItemID").value;
-    const quantity = document.getElementById("updateQuantity").value;
-    const datacenter_id = document.getElementById("updateDatacenterID").value;
+    // const quantity = document.getElementById("updateQuantity").value;
+    let datacenter_id;
+    try {
+      datacenter_id = document.getElementById("updateDatacenterID").value;
+    } catch (error) {
+      showMessage("Datacenter ID must be provided", "red");
+      return;
+    }
+    let quantity;
+    try {
+      quantity = parseInt(document.getElementById("updateQuantity").value, 10);
+      if (isNaN(quantity)) {
+        showMessage("Quantity must be a number", "red");
+        return;
+      }
+      if (quantity < 0) {
+        showMessage("Quantity cannot be negative", "red");
+        return;
+      }
+    } catch (error) {
+      showMessage("Quantity must be a number", "red");
+      return;
+    }
 
     fetch(`/api/item/${id}`, {
       method: "PUT",
@@ -139,7 +179,7 @@ document
 
     // prompt for confirmation
     const confirmed = confirm(
-      `Are you sure you want to delete item with ID ${id}?`
+      `Are you sure you want to delete item with ID ${id}?`,
     );
     if (!confirmed) return;
 
@@ -165,7 +205,7 @@ function showMessage(text, color) {
   if (!msgDiv) {
     msgDiv = document.createElement("div");
     msgDiv.id = "message";
-    document.body.prepend(msgDiv); 
+    document.body.prepend(msgDiv);
   }
 
   msgDiv.textContent = text;
