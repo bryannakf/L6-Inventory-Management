@@ -20,3 +20,18 @@
 # Invoke-WebRequest -Uri "http://localhost:5000/item/1" `
 #                   -Method DELETE
 
+(Powershell) $env:SECRET_KEY = "mySuperRandomKey123!@#"
+
+run: if len(password) < 8:
+            flash("Password must be at least 8 characters.")
+            return redirect(url_for("register"))
+
+        if not re.search(r"[A-Z]", password):
+            flash("Password needs one uppercase letter.")
+            return redirect(url_for("register"))
+
+        if not re.search(r"\d", password):
+            flash("Password needs one number.")
+            return redirect(url_for("register"))
+
+        password = generate_password_hash(password)

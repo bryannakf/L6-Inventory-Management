@@ -6,6 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 import sqlite3
 import os
+import re
 
 app = Flask(__name__)
 
@@ -13,7 +14,12 @@ app.config.from_mapping(
     DATABASE="/app/data/data.db"
 )
 
-app.secret_key = "your_secret_key"
+app.secret_key = os.getenv("SECRET_KEY")
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_SAMESITE='Lax'
+)
 
 init_app(app)
 
@@ -69,7 +75,21 @@ def register():
 
     if request.method == "POST":
         username = request.form["username"]
-        password = generate_password_hash(request.form["password"])
+        password = request.form["password"]
+
+        if len(password) < 8:
+            flash("Password must be at least 8 characters.")
+            return redirect(url_for("register"))
+
+        if not re.search(r"[A-Z]", password):
+            flash("Password needs one uppercase letter.")
+            return redirect(url_for("register"))
+
+        if not re.search(r"\d", password):
+            flash("Password needs one number.")
+            return redirect(url_for("register"))
+
+        password = generate_password_hash(password)
         role = request.form["role"]
 
         try:
