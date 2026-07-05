@@ -2,6 +2,7 @@
 CREATE TABLE IF NOT EXISTS datacenter (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     location TEXT NOT NULL,
+    deleted_at DATETIME,
     capacity INTEGER NOT NULL
 );
 

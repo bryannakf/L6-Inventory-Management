@@ -331,11 +331,17 @@ def api_add_datacenter():
 
     return jsonify({"message": "Datacenter added"}), 201
 
-
+# 🔥 FIXED: excludes soft-deleted items
 @app.route("/api/datacenters")
 @login_required
 def api_get_datacenters():
-    dcs = get_datacenters()
+    db = get_db()
+
+    dcs = db.execute("""
+        SELECT *
+        FROM datacenter
+        WHERE deleted_at IS NULL
+    """).fetchall()
 
     return jsonify([
         {
@@ -347,6 +353,21 @@ def api_get_datacenters():
     ])
 
 
+# @app.route("/api/datacenters")
+# @login_required
+# def api_get_datacenters():
+#     dcs = get_datacenters()
+
+#     return jsonify([
+#         {
+#             "id": d["id"],
+#             "location": d["location"],
+#             "capacity": d["capacity"]
+#         }
+#         for d in dcs
+#     ])
+
+
 @app.route("/api/datacenter/<int:id>", methods=["PUT"])
 @login_required
 def api_update_datacenter(id):
@@ -355,13 +376,56 @@ def api_update_datacenter(id):
     update_datacenter(id, data.get("capacity"))
     return jsonify({"message": "Updated"})
 
-
+# 🔥 NEW ROLE-BASED DELETE LOGIC
 @app.route("/api/datacenter/<int:id>", methods=["DELETE"])
 @login_required
 def api_delete_datacenter(id):
-    delete_datacenter(id)
+    db = get_db()
+    role = session.get("role")
+    username = session.get("username")
+
+    if role == "admin":
+        db.execute("DELETE FROM datacenter WHERE id = ?", (id,))
+        action = f"HARD delete datacenter {id}"
+    else:
+        db.execute(
+            "UPDATE datacenter SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (id,)
+        )
+        action = f"SOFT delete datacenter {id}"
+    db.execute(
+        "INSERT INTO actionsAudit (username, action) VALUES (?, ?)",
+        (username, action)
+    )
+    db.commit()
     return jsonify({"message": "Deleted"})
 
+# # 🔥 NEW ROLE-BASED DELETE LOGIC
+# @app.route("/api/item/<int:id>", methods=["DELETE"])
+# @login_required
+# def api_delete_item(id):
+#     db = get_db()
+#     role = session.get("role")
+#     username = session.get("username")
+
+#     if role == "admin":
+#         db.execute("DELETE FROM inventory WHERE id = ?", (id,))
+#         action = f"HARD delete item {id}"
+#     else:
+#         db.execute(
+#             "UPDATE inventory SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?",
+#             (id,)
+#         )
+#         action = f"SOFT delete item {id}"
+
+#     db.execute(
+#         "INSERT INTO actionsAudit (username, action) VALUES (?, ?)",
+#         (username, action)
+#     )
+
+#     db.commit()
+
+#     return jsonify({"message": "Deleted"})
 
 # -------------------------
 # AUDIT LOG
