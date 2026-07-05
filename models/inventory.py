@@ -6,15 +6,18 @@ def add_item(item_name, quantity, datacenter_id):
         "INSERT INTO inventory (item_name, quantity, datacenter_id) VALUES (?, ?, ?)",
         (item_name, quantity, datacenter_id)
     )
+    db.execute(
+        "INSERT INTO actionsAudit (username, action) VALUES (?, ?)",
+        ("system", f"Added item {item_name}")
+    )
     db.commit()
 
 
 def get_items():
     db = get_db()
-    return db.execute("""
-        SELECT id, item_name, quantity, datacenter_id
-        FROM inventory
-    """).fetchall()
+    return db.execute(
+        "SELECT id, item_name, quantity, datacenter_id FROM inventory"
+    ).fetchall()
 
 
 def update_item(id, quantity, datacenter_id):
@@ -23,11 +26,34 @@ def update_item(id, quantity, datacenter_id):
         "UPDATE inventory SET quantity=?, datacenter_id=? WHERE id=?",
         (quantity, datacenter_id, id)
     )
+    db.execute(
+        "INSERT INTO actionsAudit (username, action) VALUES (?, ?)",
+        ("system", f"Updated item {id}")
+    )
     db.commit()
     return cur.rowcount
-
 
 def delete_item(item_id):
     db = get_db()
     db.execute("DELETE FROM inventory WHERE id=?", (item_id,))
+
+    try:
+        db.execute(
+            "INSERT INTO actionsAudit (username, action) VALUES (?, ?)",
+            ("system", f"Deleted item {item_id}")
+        )
+        print("✅ audit inserted")
+    except Exception as e:
+        print("❌ audit insert failed:", e)
+
     db.commit()
+
+# def delete_item(item_id):
+#     db = get_db()
+#     db.execute("DELETE FROM inventory WHERE id=?", (item_id,))
+#     db.execute(
+#         "INSERT INTO actionsAudit (username, action) VALUES (?, ?)",
+#         ("system", f"Deleted item {item_id}")
+#     )
+#     print("🔥 INVENTORY DELETE CALLED", item_id)
+#     db.commit()
