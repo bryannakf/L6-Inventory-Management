@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS inventory (
     item_name TEXT NOT NULL,
     quantity INTEGER NOT NULL,
     datacenter_id INTEGER NOT NULL,
+    deleted_at DATETIME,
     FOREIGN KEY(datacenter_id) REFERENCES datacenter(id)
 );
 
@@ -17,7 +18,8 @@ CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE,
     password TEXT NOT NULL,
-    role TEXT DEFAULT 'user'
+    role TEXT DEFAULT 'user',
+    deleted_at DATETIME
 );
 
 CREATE TABLE IF NOT EXISTS actionsAudit (
@@ -65,3 +67,8 @@ INSERT INTO inventory (item_name, quantity, datacenter_id) VALUES
 ('Firewall Device', 6, 9),
 ('Load Balancer', 11, 10);
 
+-- ALTER TABLE inventory ADD COLUMN deleted_at DATETIME;
+-- SELECT * FROM inventory WHERE deleted_at IS NULL;
+
+-- ALTER TABLE users ADD COLUMN deleted_at DATETIME;
+-- SELECT * FROM users WHERE deleted_at IS NULL;

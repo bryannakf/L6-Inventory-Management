@@ -9,6 +9,7 @@ import os
 import re
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from datetime import datetime
 
 app = Flask(__name__)
 limiter = Limiter(get_remote_address, app=app)
@@ -18,6 +19,7 @@ app.config.from_mapping(
 )
 
 app.secret_key = os.getenv("SECRET_KEY")
+
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SECURE=True,
@@ -37,21 +39,26 @@ def init_db():
         db.executescript(f.read())
 
     db.commit()
-    
+
+
+# def ensure_db():
+#     if not os.path.exists(app.config["DATABASE"]):
+#         with app.app_context():
+#             init_db()
 def ensure_db():
-    if not os.path.exists(app.config["DATABASE"]):
-        with app.app_context():
-            init_db()
+    with app.app_context():
+        db = get_db()
+        db.executescript(open(os.path.join(os.path.dirname(__file__), "schema.sql")).read())
+        db.commit()
 
 @app.cli.command("initdb")
 def initdb_command():
     init_db()
     print("Database initialized.")
 
-#-------------------------
-# LOGIN REQUIRED DECORATOR
-#------------------------
-
+# -------------------------
+# LOGIN REQUIRED
+# -------------------------
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -61,9 +68,16 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated
 
+def admin_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if session.get("role") != "admin":
+            return jsonify({"error": "Forbidden"}), 403
+        return f(*args, **kwargs)
+    return wrapper
 
 # -------------------------
-# ROUTES
+# HOME
 # -------------------------
 @app.route("/")
 def index():
@@ -115,7 +129,7 @@ def register():
 # LOGIN
 # -------------------------
 @app.route("/login", methods=["GET", "POST"])
-@limiter.limit("5 per minute")
+@limiter.limit("15 per minute")
 def login():
     db = get_db()
 
@@ -160,11 +174,8 @@ def admin():
 @app.route("/user")
 @login_required
 def user():
-    if not session.get("username"):
-        return redirect(url_for("login"))
     return render_template("user.html")
 
-@app.route("/inventory")
 @app.route("/inventory")
 @login_required
 def inventory():
@@ -177,14 +188,15 @@ def datacenter():
 
 @app.route("/actionsAudit")
 @login_required
+@admin_required
 def actionsAudit():
-    if session.get("role") != "admin":
-        return redirect(url_for("login"))
+    #return redirect(url_for("login"))
     return render_template("actionsAudit.html")
 
 # -------------------------
 # INVENTORY API
 # -------------------------
+
 @app.route("/api/item", methods=["POST"])
 @login_required
 def api_add_item():
@@ -199,10 +211,18 @@ def api_add_item():
     return jsonify({"message": "Item added"}), 201
 
 
+# 🔥 FIXED: excludes soft-deleted items
 @app.route("/api/items")
 @login_required
 def api_get_items():
-    items = get_items()
+    db = get_db()
+
+    items = db.execute("""
+        SELECT *
+        FROM inventory
+        WHERE deleted_at IS NULL
+    """).fetchall()
+
     return jsonify([
         {
             "id": i["id"],
@@ -231,13 +251,71 @@ def api_update_item(id):
     return jsonify({"message": "Updated"})
 
 
+# 🔥 NEW ROLE-BASED DELETE LOGIC
 @app.route("/api/item/<int:id>", methods=["DELETE"])
 @login_required
 def api_delete_item(id):
-    delete_item(id)
+    db = get_db()
+    role = session.get("role")
+    username = session.get("username")
+
+    if role == "admin":
+        db.execute("DELETE FROM inventory WHERE id = ?", (id,))
+        action = f"HARD delete item {id}"
+    else:
+        db.execute(
+            "UPDATE inventory SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (id,)
+        )
+        action = f"SOFT delete item {id}"
+
+    db.execute(
+        "INSERT INTO actionsAudit (username, action) VALUES (?, ?)",
+        (username, action)
+    )
+
+    db.commit()
+
     return jsonify({"message": "Deleted"})
 
+@app.route("/api/item/restore/<int:id>", methods=["POST"])
+@login_required
+@admin_required
+def restore_item(id):
+    db = get_db()
 
+    restored = db.execute(
+        "UPDATE inventory SET deleted_at = NULL WHERE id = ?",
+        (id,)
+    ).rowcount
+
+    db.commit()
+
+    if restored == 0:
+        return jsonify({"error": "Item not found"}), 404
+
+    return jsonify({"message": "Item restored"})
+
+@app.route("/api/items/deleted")
+@login_required
+@admin_required
+def get_deleted_items():
+    db = get_db()
+
+    items = db.execute("""
+        SELECT *
+        FROM inventory
+        WHERE deleted_at IS NOT NULL
+    """).fetchall()
+
+    return jsonify([
+        {
+            "id": i["id"],
+            "item_name": i["item_name"],
+            "deleted_at": i["deleted_at"]
+        }
+        for i in items
+    ])
 # -------------------------
 # DATACENTER API
 # -------------------------
@@ -258,6 +336,7 @@ def api_add_datacenter():
 @login_required
 def api_get_datacenters():
     dcs = get_datacenters()
+
     return jsonify([
         {
             "id": d["id"],
@@ -309,6 +388,8 @@ def api_actions():
 
 application = app
 
-
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
+    
+with app.app_context():
+    ensure_db()

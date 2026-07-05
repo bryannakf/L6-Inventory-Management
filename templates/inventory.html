@@ -67,13 +67,11 @@
     </form>
 
     <!-- Delete Item Form -->
-    {% if session.get('role') == 'admin' %}
     <h2>Delete Item</h2>
     <form id="deleteItemForm">
       <input type="number" id="deleteItemID" placeholder="Item ID" required />
       <button type="submit">Delete</button>
     </form>
-    {% endif %}
     <!-- Display List of Items -->
     <h2>All Items</h2>
 
