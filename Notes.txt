@@ -1,0 +1,22 @@
+# Post request:
+# Invoke-WebRequest -Uri "http://localhost:5000/item" `
+#                   -Method POST `
+#                   -Headers @{ "Content-Type" = "application/json" } `
+#                   -Body '{"name": "banana", "quantity": 5}'
+
+# Get request:
+# Invoke-WebRequest -Uri "http://localhost:5000/item" `
+#                   -Method POST `
+#                   -Headers @{ "Content-Type" = "application/json" } `
+#                   -Body '{"name": "banana", "quantity": 5}'
+
+# Put request:
+# Invoke-WebRequest -Uri "http://localhost:5000/item/1" `
+#                   -Method PUT `
+#                   -Headers @{ "Content-Type" = "application/json" } `
+#                   -Body '{"quantity": 10}'
+
+# Delete request:
+# Invoke-WebRequest -Uri "http://localhost:5000/item/1" `
+#                   -Method DELETE
+

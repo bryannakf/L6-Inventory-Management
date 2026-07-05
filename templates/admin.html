@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Admin</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+  </head>
+  <body>
+    <div class="homepage">
+      <h2>Welcome {{ username }}!</h2>
+      <button onclick="location.href='{{ url_for('logout') }}'">Log Out</button>
+      <button onclick="location.href='{{ url_for('inventory') }}'">
+        Inventory Management
+      </button>
+      <button onclick="location.href='{{ url_for('datacenter') }}'">
+        Data Center Management
+      </button>
+      <button onclick="location.href='{{ url_for('actionsAudit') }}'">
+        Audit Logs
+      </button>
+    </div>
+  </body>
+</html>

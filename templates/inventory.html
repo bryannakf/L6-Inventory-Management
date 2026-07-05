@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Inventory Management</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+  </head>
+  <body>
+    <div class="navbar">
+      <button onclick="location.href='{{ url_for('logout') }}'">Log Out</button>
+      {% if session.get('role') == 'admin' %}
+      <button onclick="location.href='{{ url_for('admin') }}'">
+        Home Page
+      </button>
+      <button onclick="location.href='{{ url_for('actionsAudit') }}'">
+        Audit Logs
+      </button>
+      {% else %}
+      <button onclick="location.href='{{ url_for('user') }}'">Home Page</button>
+      {% endif %}
+      <button onclick="location.href='{{ url_for('inventory') }}'">
+        Inventory Management
+      </button>
+      <button onclick="location.href='{{ url_for('datacenter') }}'">
+        Datacenter Management
+      </button>
+    </div>
+    <div class="subtitle">
+      <h2>Inventory Management</h2>
+      <!-- Message Display -->
+      <div id="message" style="margin-top: 10px; font-weight: bold"></div>
+    </div>
+
+    <!-- Add Item Form -->
+    <h2>Add Item</h2>
+    <form id="addItemForm">
+      <input type="text" id="addItem_name" placeholder="Item name" required />
+      <input type="number" id="addQuantity" placeholder="Quantity" required />
+      <input
+        type="number"
+        id="addDatacenterID"
+        placeholder="Datacenter ID"
+        required
+      />
+      <button type="submit">Add</button>
+    </form>
+    <!-- Update Item Form -->
+    <h2>Update Item</h2>
+    <form id="updateItemForm">
+      <input type="number" id="updateItemID" placeholder="Item ID" required />
+      <input
+        type="number"
+        id="updateQuantity"
+        placeholder="New Quantity"
+        required
+      />
+      <input
+        type="number"
+        id="updateDatacenterID"
+        placeholder="Datacenter ID"
+        required
+      />
+      <button type="submit">Update</button>
+    </form>
+
+    <!-- Delete Item Form -->
+    {% if session.get('role') == 'admin' %}
+    <h2>Delete Item</h2>
+    <form id="deleteItemForm">
+      <input type="number" id="deleteItemID" placeholder="Item ID" required />
+      <button type="submit">Delete</button>
+    </form>
+    {% endif %}
+    <!-- Display List of Items -->
+    <h2>All Items</h2>
+
+    <table id="itemTable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Item name</th>
+          <th>Quantity</th>
+          <th>Datacenter ID</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Rows will be inserted here -->
+      </tbody>
+    </table>
+    <div id="ItemList"></div>
+
+    <!-- Javascript file -->
+    <script src="/static/js/inventory.js"></script>
+  </body>
+</html>

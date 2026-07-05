@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Actions Audit</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+  </head>
+  <body>
+    <div class="navbar">
+      <button onclick="location.href='{{ url_for('logout') }}'">Log Out</button>
+      {% if session.get('role') == 'admin' %}
+      <button onclick="location.href='{{ url_for('admin') }}'">
+        Home Page
+      </button>
+      <button onclick="location.href='{{ url_for('actionsAudit') }}'">
+        Audit Logs
+      </button>
+      {% else %}
+      <button onclick="location.href='{{ url_for('user') }}'">Home Page</button>
+      {% endif %}
+      <button onclick="location.href='{{ url_for('inventory') }}'">
+        Inventory Management
+      </button>
+      <button onclick="location.href='{{ url_for('datacenter') }}'">
+        Datacenter Management
+      </button>
+    </div>
+
+    <div class="subtitle">
+      <h2>Actions Audit</h2>
+      <!-- Message Display -->
+      <div id="message" style="margin-top: 10px; font-weight: bold"></div>
+    </div>
+    <div class="form-section">
+      <!-- Display List of Actions -->
+      <h2>All Actions</h2>
+
+      <table id="actionsAuditTable">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Action</th>
+            <th>User</th>
+            <th>Timestamp</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Rows will be inserted here -->
+        </tbody>
+      </table>
+    </div>
+    <div id="actionsAuditList"></div>
+
+    <!-- Javascript file -->
+    <script src="/static/js/actionsAudit.js"></script>
+  </body>
+</html>
