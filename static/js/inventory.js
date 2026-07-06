@@ -189,6 +189,7 @@ document
         if (data.message) {
           showMessage(data.message, "green");
           getItems();
+          loadDeletedItems(); // Refresh the deleted items list
         } else {
           showMessage("Item not found or already deleted", "red");
         }
@@ -216,14 +217,18 @@ function loadDeletedItems() {
         const row = document.createElement("tr");
 
         row.innerHTML = `
-          <td>${item.id}</td>
-          <td>${item.item_name}</td>
-          <td>${item.deleted_at}</td>
-          <td>
-            <button onclick="restoreItem(${item.id})">
-              Restore
-            </button>
-          </td>
+            <td>${item.id}</td>
+            <td>${item.item_name}</td>
+            <td>${item.deleted_at}</td>
+            <td>
+                <button onclick="restoreItem(${item.id})">
+                    Restore
+                </button>
+
+                <button onclick="hardDeleteItem(${item.id})">
+                    Permanently Delete
+                </button>
+            </td>
         `;
 
         tbody.appendChild(row);
@@ -247,6 +252,22 @@ function restoreItem(id) {
     .catch((err) => console.error("Restore error", err));
 }
 
+function hardDeleteItem(id) {
+  if (!confirm("Permanently delete this item? This cannot be undone.")) {
+    return;
+  }
+
+  fetch(`/api/item/hard-delete/${id}`, {
+    method: "DELETE",
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      alert(data.message);
+
+      loadDeletedItems();
+      getItems();
+    });
+}
 // Display message
 function showMessage(text, color) {
   let msgDiv = document.getElementById("message");

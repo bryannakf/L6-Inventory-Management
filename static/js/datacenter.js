@@ -104,6 +104,7 @@ document
       .then((data) => {
         showMessage(data.message || "Datacenter added", "green");
         getDatacenters();
+        loadDeletedDatacenters(); // Refresh the deleted datacenters list
       })
       .catch((err) => {
         showMessage("Error adding datacenter", "red");
@@ -190,6 +191,7 @@ document
       .then((data) => {
         showMessage(data.message || "Datacenter deleted", "green");
         getDatacenters();
+        loadDeletedDatacenters(); // Refresh the deleted datacenters list
       })
       .catch((err) => {
         showMessage(err.message || "Error deleting datacenter", "red");
@@ -214,13 +216,19 @@ function loadDeletedDatacenters() {
         const row = document.createElement("tr");
 
         row.innerHTML = `
-          <td>${dc.id}</td>
-          <td>${dc.location}</td>
-          <td>${dc.deleted_at}</td>
-          <td>
-            <button onclick="restoreDatacenter(${dc.id})">Restore</button>
-          </td>
-        `;
+        <td>${dc.id}</td>
+        <td>${dc.location}</td>
+        <td>${dc.deleted_at}</td>
+        <td>
+            <button onclick="restoreDatacenter(${dc.id})">
+                Restore
+            </button>
+
+            <button onclick="hardDeleteDatacenter(${dc.id})">
+                Permanently Delete
+            </button>
+        </td>
+`;
 
         tbody.appendChild(row);
       });
@@ -241,6 +249,21 @@ function restoreDatacenter(id) {
       getDatacenters(); // refresh active datacenter list
     })
     .catch((err) => console.error("Restore error", err));
+}
+
+function hardDeleteDatacenter(id) {
+  if (!confirm("Permanently delete this datacenter?")) return;
+
+  fetch(`/api/datacenter/hard-delete/${id}`, {
+    method: "DELETE",
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      alert(data.message);
+
+      loadDeletedDatacenters();
+      getDatacenters();
+    });
 }
 
 // Message display
