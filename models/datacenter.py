@@ -17,19 +17,23 @@ def get_datacenters():
     db = get_db()
     return db.execute("SELECT * FROM datacenter").fetchall()
 
-
 def update_datacenter(datacenter_id, capacity):
     db = get_db()
-    db.execute(
-        "UPDATE datacenter SET capacity = ? WHERE id = ?",
-        (capacity, datacenter_id)
-    )
+
+    cur = db.execute("""
+        UPDATE datacenter
+        SET capacity = ?
+        WHERE id = ?
+        AND deleted_at IS NULL
+    """, (capacity, datacenter_id))
+
     db.execute(
         "INSERT INTO actionsAudit (username, action) VALUES (?, ?)",
-        ("admin", f"Updated datacenter {datacenter_id}")
+        ("system", f"Updated datacenter {datacenter_id}")
     )
-    db.commit()
 
+    db.commit()
+    return cur.rowcount
 
 def delete_datacenter(datacenter_id):
     db = get_db()

@@ -22,14 +22,19 @@ def get_items():
 
 def update_item(id, quantity, datacenter_id):
     db = get_db()
-    cur = db.execute(
-        "UPDATE inventory SET quantity=?, datacenter_id=? WHERE id=?",
-        (quantity, datacenter_id, id)
-    )
+
+    cur = db.execute("""
+        UPDATE inventory
+        SET quantity = ?, datacenter_id = ?
+        WHERE id = ?
+        AND deleted_at IS NULL
+    """, (quantity, datacenter_id, id))
+
     db.execute(
         "INSERT INTO actionsAudit (username, action) VALUES (?, ?)",
         ("system", f"Updated item {id}")
     )
+
     db.commit()
     return cur.rowcount
 

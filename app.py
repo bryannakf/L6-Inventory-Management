@@ -301,23 +301,6 @@ def restore_item(id):
         return jsonify({"error": "Item not found"}), 404
 
     return jsonify({"message": "Item restored"})
-# @app.route("/api/item/restore/<int:id>", methods=["POST"])
-# @login_required
-# @admin_required
-# def restore_item(id):
-#     db = get_db()
-
-#     restored = db.execute(
-#         "UPDATE inventory SET deleted_at = NULL WHERE id = ?",
-#         (id,)
-#     ).rowcount
-
-#     db.commit()
-
-#     if restored == 0:
-#         return jsonify({"error": "Item not found"}), 404
-
-#     return jsonify({"message": "Item restored"})
 
 @app.route("/api/items/deleted")
 @login_required
@@ -400,51 +383,21 @@ def api_get_datacenters():
     ])
 
 
-# @app.route("/api/datacenters")
-# @login_required
-# def api_get_datacenters():
-#     dcs = get_datacenters()
-
-#     return jsonify([
-#         {
-#             "id": d["id"],
-#             "location": d["location"],
-#             "capacity": d["capacity"]
-#         }
-#         for d in dcs
-#     ])
-
-
 @app.route("/api/datacenter/<int:id>", methods=["PUT"])
 @login_required
 def api_update_datacenter(id):
     data = request.get_json()
 
-    update_datacenter(id, data.get("capacity"))
+    updated = update_datacenter(
+        id,
+        data.get("capacity")
+    )
+
+    if updated == 0:
+        return jsonify({"error": "Not found"}), 404
+
     return jsonify({"message": "Updated"})
 
-# @app.route("/api/datacenter/<int:id>", methods=["DELETE"])
-# @login_required
-# def api_delete_datacenter(id):
-#     db = get_db()
-
-#     db.execute(
-#         """
-#         UPDATE datacenter
-#         SET deleted_at = CURRENT_TIMESTAMP
-#         WHERE id = ?
-#         """,
-#         (id,)
-#     )
-
-#     db.execute(
-#         "INSERT INTO actionsAudit(username, action) VALUES (?, ?)",
-#         (session["username"], f"Soft deleted datacenter {id}")
-#     )
-
-#     db.commit()
-
-#     return jsonify({"message": "Datacenter moved to recycle bin"})
 
 @app.route("/api/datacenter/<int:id>", methods=["DELETE"])
 @login_required
@@ -541,54 +494,6 @@ def hard_delete_datacenter(id):
         return jsonify({"error": "Datacenter not found"}), 404
 
     return jsonify({"message": "Datacenter permanently deleted"})
-# @app.route("/api/datacenter/restore/<int:id>", methods=["POST"])
-# @login_required
-# @admin_required
-# def restore_datacenter(id):
-#     db = get_db()
-
-#     restored = db.execute(
-#         """
-#         UPDATE datacenter
-#         SET deleted_at = NULL
-#         WHERE id = ?
-#         """,
-#         (id,)
-#     ).rowcount
-
-#     db.commit()
-
-#     if restored == 0:
-#         return jsonify({"error": "Datacenter not found"}), 404
-
-#     return jsonify({"message": "Datacenter restored"})
-
-# # 🔥 NEW ROLE-BASED DELETE LOGIC
-# @app.route("/api/item/<int:id>", methods=["DELETE"])
-# @login_required
-# def api_delete_item(id):
-#     db = get_db()
-#     role = session.get("role")
-#     username = session.get("username")
-
-#     if role == "admin":
-#         db.execute("DELETE FROM inventory WHERE id = ?", (id,))
-#         action = f"HARD delete item {id}"
-#     else:
-#         db.execute(
-#             "UPDATE inventory SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?",
-#             (id,)
-#         )
-#         action = f"SOFT delete item {id}"
-
-#     db.execute(
-#         "INSERT INTO actionsAudit (username, action) VALUES (?, ?)",
-#         (username, action)
-#     )
-
-#     db.commit()
-
-#     return jsonify({"message": "Deleted"})
 
 # -------------------------
 # AUDIT LOG
