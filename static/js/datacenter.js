@@ -179,24 +179,18 @@ document
     );
     if (!confirmed) return;
 
-    fetch(`/api/datacenter/${id}`, { method: "DELETE" })
-      .then((res) => {
-        if (!res.ok) {
-          return res.json().then((data) => {
-            throw new Error(data.error || "Failed to delete datacenter");
-          });
-        }
-        return res.json();
-      })
-      .then((data) => {
-        showMessage(data.message || "Datacenter deleted", "green");
-        getDatacenters();
-        loadDeletedDatacenters(); // Refresh the deleted datacenters list
-      })
-      .catch((err) => {
-        showMessage(err.message || "Error deleting datacenter", "red");
-        console.error("Delete error:", err);
-      });
+    fetch(`/api/datacenter/${id}`, { method: "DELETE" }).then(async (res) => {
+      const data = await res.json();
+
+      if (!res.ok) {
+        showMessage(data.error, "red");
+        return;
+      }
+
+      showMessage(data.message, "green");
+      getDatacenters();
+      loadDeletedDatacenters();
+    });
   });
 
 document.addEventListener("DOMContentLoaded", () => {

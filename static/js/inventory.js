@@ -176,28 +176,24 @@ document
       showMessage("Please enter a valid item ID", "red");
       return;
     }
-
     // prompt for confirmation
     const confirmed = confirm(
       `Are you sure you want to delete item with ID ${id}?`,
     );
     if (!confirmed) return;
 
-    fetch(`/api/item/${id}`, { method: "DELETE" })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.message) {
-          showMessage(data.message, "green");
-          getItems();
-          loadDeletedItems(); // Refresh the deleted items list
-        } else {
-          showMessage("Item not found or already deleted", "red");
-        }
-      })
-      .catch((err) => {
-        showMessage("Error deleting item", "red");
-        console.error("Delete error:", err);
-      });
+    fetch(`/api/item/${id}`, { method: "DELETE" }).then(async (res) => {
+      const data = await res.json();
+
+      if (!res.ok) {
+        showMessage(data.error, "red");
+        return;
+      }
+
+      showMessage(data.message, "green");
+      getItems();
+      loadDeletedItems();
+    });
   });
 
 document.addEventListener("DOMContentLoaded", () => {

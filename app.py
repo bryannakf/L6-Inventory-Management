@@ -256,14 +256,17 @@ def api_update_item(id):
 def api_delete_item(id):
     db = get_db()
 
-    db.execute(
-        """
+    updated = db.execute("""
         UPDATE inventory
         SET deleted_at = CURRENT_TIMESTAMP
         WHERE id = ?
-        """,
-        (id,)
-    )
+        AND deleted_at IS NULL
+    """, (id,)).rowcount
+
+    if updated == 0:
+        return jsonify({
+            "error": "Item already deleted or not found"
+        }), 404
 
     db.execute(
         "INSERT INTO actionsAudit(username, action) VALUES (?, ?)",
@@ -420,19 +423,45 @@ def api_update_datacenter(id):
     update_datacenter(id, data.get("capacity"))
     return jsonify({"message": "Updated"})
 
+# @app.route("/api/datacenter/<int:id>", methods=["DELETE"])
+# @login_required
+# def api_delete_datacenter(id):
+#     db = get_db()
+
+#     db.execute(
+#         """
+#         UPDATE datacenter
+#         SET deleted_at = CURRENT_TIMESTAMP
+#         WHERE id = ?
+#         """,
+#         (id,)
+#     )
+
+#     db.execute(
+#         "INSERT INTO actionsAudit(username, action) VALUES (?, ?)",
+#         (session["username"], f"Soft deleted datacenter {id}")
+#     )
+
+#     db.commit()
+
+#     return jsonify({"message": "Datacenter moved to recycle bin"})
+
 @app.route("/api/datacenter/<int:id>", methods=["DELETE"])
 @login_required
 def api_delete_datacenter(id):
     db = get_db()
 
-    db.execute(
-        """
+    updated = db.execute("""
         UPDATE datacenter
         SET deleted_at = CURRENT_TIMESTAMP
         WHERE id = ?
-        """,
-        (id,)
-    )
+        AND deleted_at IS NULL
+    """, (id,)).rowcount
+
+    if updated == 0:
+        return jsonify({
+            "error": "Datacenter already deleted or not found"
+        }), 404
 
     db.execute(
         "INSERT INTO actionsAudit(username, action) VALUES (?, ?)",
