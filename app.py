@@ -1,5 +1,6 @@
 from flask import Flask, current_app, render_template, request, jsonify, session, redirect, url_for, flash
 from db import get_db, close_db, init_app
+import db
 from models.inventory import *
 from models.datacenter import add_datacenter, get_datacenters, update_datacenter, delete_datacenter
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -129,7 +130,7 @@ def register():
 # LOGIN
 # -------------------------
 @app.route("/login", methods=["GET", "POST"])
-@limiter.limit("15 per minute")
+@limiter.limit("5 per minute")
 def login():
     db = get_db()
 
@@ -196,6 +197,7 @@ def actionsAudit():
 # -------------------------
 # INVENTORY API
 # -------------------------
+#add item
 
 @app.route("/api/item", methods=["POST"])
 @login_required
@@ -203,10 +205,27 @@ def api_add_item():
     data = request.get_json()
 
     add_item(
-        data.get("item_name"),
-        data.get("quantity"),
-        data.get("datacenter_id")
+        data["item_name"],
+        data["quantity"],
+        data["datacenter_id"]
     )
+
+    db = get_db()
+
+    db.execute(
+        """
+        INSERT INTO actionsAudit(username, action)
+        VALUES (?, ?)
+        """,
+        (
+            session["username"],
+            f"Added item '{data['item_name']}' "
+            f"(Qty {data['quantity']}) "
+            f"to datacenter {data['datacenter_id']}"
+        )
+    )
+
+    db.commit()
 
     return jsonify({"message": "Item added"}), 201
 
@@ -244,6 +263,21 @@ def api_update_item(id):
         data.get("quantity"),
         data.get("datacenter_id")
     )
+    if updated:
+        db = get_db()
+        db.execute(
+            """
+            INSERT INTO actionsAudit(username, action)
+            VALUES (?, ?)
+            """,
+            (
+                session["username"],
+                f"Updated item {id} "
+                f"(Qty={data['quantity']}, Datacenter={data['datacenter_id']})"
+            )
+        )
+        db.commit()
+
 
     if updated == 0:
         return jsonify({"error": "Not found"}), 404
@@ -349,17 +383,35 @@ def hard_delete_item(id):
 # -------------------------
 # DATACENTER API
 # -------------------------
+        
 @app.route("/api/datacenter", methods=["POST"])
 @login_required
 def api_add_datacenter():
+
     data = request.get_json()
 
     add_datacenter(
-        data.get("location"),
-        data.get("capacity")
+        data["location"],
+        data["capacity"]
     )
 
-    return jsonify({"message": "Datacenter added"}), 201
+    db = get_db()
+
+    db.execute(
+        """
+        INSERT INTO actionsAudit(username, action)
+        VALUES (?, ?)
+        """,
+        (
+            session["username"],
+            f"Added datacenter '{data['location']}' "
+            f"with capacity {data['capacity']}"
+        )
+    )
+
+    db.commit()
+
+    return jsonify({"message":"Datacenter added"}), 201
 
 # 🔥 FIXED: excludes soft-deleted items
 @app.route("/api/datacenters")
@@ -396,7 +448,23 @@ def api_update_datacenter(id):
     if updated == 0:
         return jsonify({"error": "Not found"}), 404
 
-    return jsonify({"message": "Updated"})
+    if updated:
+        db = get_db()
+
+        db.execute(
+            """
+            INSERT INTO actionsAudit(username, action)
+            VALUES (?, ?)
+            """,
+            (
+                session["username"],
+                f"Updated datacenter {id} "
+                f"(Capacity={data['capacity']})"
+            )
+        )
+
+        db.commit()
+        return jsonify({"message": "Updated"})
 
 
 @app.route("/api/datacenter/<int:id>", methods=["DELETE"])
