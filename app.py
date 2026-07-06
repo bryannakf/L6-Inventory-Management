@@ -586,7 +586,40 @@ def api_actions():
     ])
 
 #create user
+@app.route("/admin/create-user", methods=["GET", "POST"])
+@login_required
+@admin_required
+def create_user():
+    db = get_db()
 
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+        role = request.form["role"]
+
+        # hash password (IMPORTANT)
+        hashed_password = generate_password_hash(password)
+
+        try:
+            db.execute(
+                "INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
+                (username, hashed_password, role)
+            )
+
+            db.execute(
+                "INSERT INTO actionsAudit (username, action) VALUES (?, ?)",
+                (session["username"], f"Created user {username} with role {role}")
+            )
+
+            db.commit()
+
+            flash("User created successfully")
+            return redirect(url_for("create_user"))
+
+        except sqlite3.IntegrityError:
+            flash("Username already exists")
+
+    return render_template("create_user.html")
 
 application = app
 

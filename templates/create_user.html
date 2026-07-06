@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Create User (Admin)</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+  </head>
+
+  <body>
+    <div class="login">
+      <h2>Create User</h2>
+
+      {% with messages = get_flashed_messages() %} {% if messages %}
+      <ul style="color: red">
+        {% for message in messages %}
+        <li>{{ message }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %} {% endwith %}
+
+      <form method="POST">
+        <input name="username" type="text" placeholder="Username" required />
+
+        <input
+          name="password"
+          type="password"
+          placeholder="Password"
+          required
+        />
+
+        <select name="role" required>
+          <option value="user">User</option>
+          <option value="admin">Admin</option>
+        </select>
+
+        <button type="submit">Create</button>
+      </form>
+
+      <p>
+        <a href="{{ url_for('admin') }}">Back to Admin Dashboard</a>
+      </p>
+    </div>
+  </body>
+</html>
