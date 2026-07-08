@@ -24,6 +24,20 @@
 
 docker run -it -p 8000:5000 -e "SECRET_KEY=mySuperRandomKey123!@#" -v "${PWD}\inventory_management:/app/inventory_management" -v "${PWD}\data:/app/data" flask-app
 
+Instead of:
+
+-v "${PWD}\data:/app/data"
+
+use an explicit path, for example:
+
+-v "C:\Users\KangaFeubaB\L6 Inventory Management\data:/app/data"
+
+or, in PowerShell:
+
+-v "${PWD}/data:/app/data"
+
+Using forward slashes is generally more reliable with Docker Desktop on Windows.
+
 run: if len(password) < 8:
             flash("Password must be at least 8 characters.")
             return redirect(url_for("register"))

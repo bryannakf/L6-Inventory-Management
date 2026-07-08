@@ -1,3 +1,6 @@
+SELECT * FROM users 
+WHERE username='admin' OR '1'='1';
+
 -- Run this using a SQLite browser or via Python script
 CREATE TABLE IF NOT EXISTS datacenter (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -17,10 +20,10 @@ CREATE TABLE IF NOT EXISTS inventory (
 
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT NOT NULL UNIQUE,
+    username TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
-    role TEXT DEFAULT 'user',
-    deleted_at DATETIME
+    role TEXT NOT NULL,
+    must_change_password INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS actionsAudit (

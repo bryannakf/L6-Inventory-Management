@@ -16,7 +16,10 @@ app = Flask(__name__)
 limiter = Limiter(get_remote_address, app=app)
 
 app.config.from_mapping(
-    DATABASE="/app/data/data.db"
+    DATABASE=os.getenv(
+        "DATABASE",
+        os.path.join(app.instance_path, "data.db")
+    )
 )
 
 app.secret_key = os.getenv("SECRET_KEY")
@@ -32,12 +35,29 @@ init_app(app)
 # -------------------------
 # DB INITIALISATION
 # -------------------------
+@app.route("/debug-users")
+def debug_users():
+    db = get_db()
+    rows = db.execute("SELECT username FROM users").fetchall()
+    return {"users": [r["username"] for r in rows]}
+
 def init_db():
     db = get_db()
-    schema_path = os.path.join(os.path.dirname(__file__), "schema.sql")
 
-    with open(schema_path, "r", encoding="utf-8") as f:
-        db.executescript(f.read())
+    with current_app.open_resource('schema.sql') as f:
+        db.executescript(f.read().decode('utf8'))
+
+    db.execute("""
+        INSERT OR IGNORE INTO users
+        (username, password, role, must_change_password)
+        VALUES (?, ?, ?, ?)
+    """,
+    (
+        "admin",
+        generate_password_hash("ChangeMe123!"),
+        "admin",
+        1
+    ))
 
     db.commit()
 
@@ -77,6 +97,7 @@ def admin_required(f):
         return f(*args, **kwargs)
     return wrapper
 
+
 # -------------------------
 # HOME
 # -------------------------
@@ -87,48 +108,81 @@ def index():
 # -------------------------
 # REGISTER
 # -------------------------
-@app.route("/register", methods=["GET", "POST"])
+# @app.route("/register", methods=["GET", "POST"])
+# def register():
+#     db = get_db()
+
+#     if request.method == "POST":
+#         username = request.form["username"]
+#         password = request.form["password"]
+
+#         if len(password) < 8:
+#             flash("Password must be at least 8 characters.")
+#             return redirect(url_for("register"))
+
+#         if not re.search(r"[A-Z]", password):
+#             flash("Password needs one uppercase letter.")
+#             return redirect(url_for("register"))
+
+#         if not re.search(r"\d", password):
+#             flash("Password needs one number.")
+#             return redirect(url_for("register"))
+
+#         password = generate_password_hash(password)
+#         role = "user"  # Default role is 'user'
+
+#         try:
+#             db.execute(
+#                 "INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
+#                 (username, password, role)
+#             )
+#             db.commit()
+
+#             flash("Registration successful! Please log in.")
+#             return redirect(url_for("login"))
+
+#         except sqlite3.IntegrityError:
+#             flash("Username already exists.")
+#             return redirect(url_for("register"))
+
+#     return render_template("register.html")
+
+@app.route('/register')
 def register():
-    db = get_db()
 
-    if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
+    flash("Accounts are created by the administrator.")
 
-        if len(password) < 8:
-            flash("Password must be at least 8 characters.")
-            return redirect(url_for("register"))
-
-        if not re.search(r"[A-Z]", password):
-            flash("Password needs one uppercase letter.")
-            return redirect(url_for("register"))
-
-        if not re.search(r"\d", password):
-            flash("Password needs one number.")
-            return redirect(url_for("register"))
-
-        password = generate_password_hash(password)
-        role = "user"  # Default role is 'user'
-
-        try:
-            db.execute(
-                "INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
-                (username, password, role)
-            )
-            db.commit()
-
-            flash("Registration successful! Please log in.")
-            return redirect(url_for("login"))
-
-        except sqlite3.IntegrityError:
-            flash("Username already exists.")
-            return redirect(url_for("register"))
-
-    return render_template("register.html")
-
+    return redirect(url_for("login"))
 # -------------------------
 # LOGIN
 # -------------------------
+# @app.route("/login", methods=["GET", "POST"])
+# @limiter.limit("15 per minute")
+# def login():
+#     db = get_db()
+
+#     if request.method == "POST":
+#         username = request.form["username"]
+#         password = request.form["password"]
+
+#         user = db.execute(
+#             "SELECT * FROM users WHERE username = ?",
+#             (username,)
+#         ).fetchone()
+
+#         if user and check_password_hash(user["password"], password):
+#             session["user_id"] = user["id"]
+#             session["username"] = user["username"]
+#             session["role"] = user["role"]
+
+#             return redirect(url_for("admin" if user["role"] == "admin" else "user"))
+
+#         flash("Invalid credentials")
+#         return redirect(url_for("login"))
+    
+    
+
+#     return render_template("login.html")
 @app.route("/login", methods=["GET", "POST"])
 @limiter.limit("15 per minute")
 def login():
@@ -138,23 +192,80 @@ def login():
         username = request.form["username"]
         password = request.form["password"]
 
+        # Look up the user
         user = db.execute(
             "SELECT * FROM users WHERE username = ?",
             (username,)
         ).fetchone()
-
+        
+        #temp 
+        print("USER KEYS:", user.keys() if user else None)
+        # Check username and password
         if user and check_password_hash(user["password"], password):
+
+            # Store user details in the session
             session["user_id"] = user["id"]
             session["username"] = user["username"]
             session["role"] = user["role"]
 
-            return redirect(url_for("admin" if user["role"] == "admin" else "user"))
+            # Force password change if using a temporary password
+            if user["must_change_password"] == 1:
+                flash("You must change your temporary password before continuing.")
+                return redirect(url_for("change_password"))
 
-        flash("Invalid credentials")
+           # flash("Login successful!")
+
+            # Redirect based on role
+            if user["role"] == "admin":
+                return redirect(url_for("admin"))
+            else:
+                return redirect(url_for("user"))
+
+        # Invalid login
+        flash("Invalid username or password.")
         return redirect(url_for("login"))
 
     return render_template("login.html")
 
+@app.route("/change-password", methods=["GET", "POST"])
+def change_password():
+
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+
+        new_password = request.form["password"]
+        confirm = request.form["confirm_password"]
+
+        if new_password != confirm:
+            flash("Passwords do not match.")
+            return redirect(url_for("change_password"))
+
+        db = get_db()
+
+        db.execute(
+            """
+            UPDATE users
+            SET password = ?,
+                must_change_password = 0
+            WHERE id = ?
+            """,
+            (
+                generate_password_hash(new_password),
+                session["user_id"]
+            )
+        )
+
+        db.commit()
+
+        flash("Password updated successfully.")
+
+        return redirect(
+            url_for("admin" if session["role"] == "admin" else "user")
+        )
+
+    return render_template("change_password.html")
 # -------------------------
 # LOGOUT
 # -------------------------
@@ -168,6 +279,16 @@ def logout():
 # -------------------------
 @app.route("/admin")
 def admin():
+    db = get_db()
+
+    user = db.execute(
+        "SELECT must_change_password FROM users WHERE id = ?",
+        (session["user_id"],)
+    ).fetchone()
+
+    if user["must_change_password"] == 1:
+        return redirect(url_for("change_password"))
+    
     if session.get("role") != "admin":
         return redirect(url_for("login"))
     return render_template("admin.html")
@@ -597,14 +718,31 @@ def create_user():
         password = request.form["password"]
         role = request.form["role"]
 
+        if len(password) < 8:
+            flash("Password must be at least 8 characters.")
+            return redirect(url_for("create_user"))
+
+        if not re.search(r"[A-Z]", password):
+            flash("Password needs one uppercase letter.")
+            return redirect(url_for("create_user"))
+
+        if not re.search(r"\d", password):
+            flash("Password needs one number.")
+            return redirect(url_for("create_user"))
+
+
         # hash password (IMPORTANT)
         hashed_password = generate_password_hash(password)
 
         try:
             db.execute(
-                "INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
-                (username, hashed_password, role)
-            )
+                """
+                INSERT INTO users
+                (username, password, role, must_change_password)
+                VALUES (?, ?, ?, ?)
+                """,
+                (username, hashed_password, role, 1)
+                )
 
             db.execute(
                 "INSERT INTO actionsAudit (username, action) VALUES (?, ?)",
@@ -624,7 +762,11 @@ def create_user():
 application = app
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
-    
-with app.app_context():
-    ensure_db()
+    with app.app_context():
+        ensure_db()
+
+    app.run(
+        host="0.0.0.0",
+        port=5000,
+        debug=True
+    )
