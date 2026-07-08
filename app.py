@@ -15,14 +15,12 @@ from datetime import datetime
 app = Flask(__name__)
 limiter = Limiter(get_remote_address, app=app)
 
-app.config.from_mapping(
-    DATABASE=os.getenv(
-        "DATABASE",
-        os.path.join(app.instance_path, "data.db")
-    )
+app.config["SECRET_KEY"] = os.environ.get(
+    "SECRET_KEY",
+    "test-secret-key-for-development"
 )
 
-app.secret_key = os.getenv("SECRET_KEY")
+app.secret_key = app.config["SECRET_KEY"]
 
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,

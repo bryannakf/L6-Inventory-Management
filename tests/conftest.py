@@ -4,6 +4,7 @@ import sqlite3
 
 import pytest
 from werkzeug.security import generate_password_hash
+from app import app as flask_app
 from app import db
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'inventory_management'))
@@ -70,6 +71,21 @@ def app():
     for mod, original in originals.items():
         mod.get_db = original
     conn.close()
+
+
+@pytest.fixture
+def client(app):
+    return app.test_client()
+
+@pytest.fixture
+def app():
+
+    flask_app.config.update(
+        TESTING=True,
+        SECRET_KEY="test-secret-key"
+    )
+
+    return flask_app
 
 
 @pytest.fixture
