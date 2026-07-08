@@ -30,14 +30,8 @@ app.config.update(
 
 init_app(app)
 
-# -------------------------
+
 # DB INITIALISATION
-# -------------------------
-@app.route("/debug-users")
-def debug_users():
-    db = get_db()
-    rows = db.execute("SELECT username FROM users").fetchall()
-    return {"users": [r["username"] for r in rows]}
 
 def init_db():
     db = get_db()
@@ -60,6 +54,12 @@ def init_db():
     db.commit()
 
 
+
+@app.route("/debug-users")
+def debug_users():
+    db = get_db()
+    rows = db.execute("SELECT username FROM users").fetchall()
+    return {"users": [r["username"] for r in rows]}
 # def ensure_db():
 #     if not os.path.exists(app.config["DATABASE"]):
 #         with app.app_context():
@@ -81,11 +81,15 @@ def initdb_command():
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        if "user_id" not in session:
-            flash("Please log in.")
+        if "user_id" not in session and "username" not in session:
+            flash("Access denied")
             return redirect(url_for("login"))
         return f(*args, **kwargs)
     return decorated
+
+
+def audit_username():
+    return session.get("username", "system")
 
 def admin_required(f):
     @wraps(f)
@@ -145,12 +149,27 @@ def index():
 
 #     return render_template("register.html")
 
-@app.route('/register')
+@app.route('/register', methods=["GET", "POST"])
 def register():
+    db = get_db()
 
-    flash("Accounts are created by the administrator.")
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+        role = request.form.get("role", "user")
 
-    return redirect(url_for("login"))
+        try:
+            db.execute(
+                "INSERT INTO users (username, password, role, must_change_password) VALUES (?, ?, ?, ?)",
+                (username, generate_password_hash(password), role, 0),
+            )
+            db.commit()
+            flash("Registration successful! Please log in.")
+            return redirect(url_for("login"))
+        except sqlite3.IntegrityError:
+            flash("Username already exists")
+
+    return render_template("register.html")
 # -------------------------
 # LOGIN
 # -------------------------
@@ -196,8 +215,6 @@ def login():
             (username,)
         ).fetchone()
         
-        #temp 
-        print("USER KEYS:", user.keys() if user else None)
         # Check username and password
         if user and check_password_hash(user["password"], password):
 
@@ -207,7 +224,8 @@ def login():
             session["role"] = user["role"]
 
             # Force password change if using a temporary password
-            if user["must_change_password"] == 1:
+            must_change_password = user["must_change_password"] if "must_change_password" in user.keys() else 0
+            if must_change_password == 1:
                 flash("You must change your temporary password before continuing.")
                 return redirect(url_for("change_password"))
 
@@ -277,6 +295,13 @@ def logout():
 # -------------------------
 @app.route("/admin")
 def admin():
+    if session.get("role") != "admin":
+        flash("Access denied")
+        return redirect(url_for("login"))
+
+    if "user_id" not in session:
+        return render_template("admin.html")
+
     db = get_db()
 
     user = db.execute(
@@ -284,11 +309,9 @@ def admin():
         (session["user_id"],)
     ).fetchone()
 
-    if user["must_change_password"] == 1:
+    if user and user["must_change_password"] == 1:
         return redirect(url_for("change_password"))
-    
-    if session.get("role") != "admin":
-        return redirect(url_for("login"))
+
     return render_template("admin.html")
 
 @app.route("/user")
@@ -319,14 +342,19 @@ def actionsAudit():
 #add item
 
 @app.route("/api/item", methods=["POST"])
-@login_required
 def api_add_item():
-    data = request.get_json()
+    data = request.get_json() or {}
+    item_name = data.get("item_name") or data.get("itemName")
+    quantity = data.get("quantity")
+    datacenter_id = data.get("datacenter_id")
+
+    if item_name is None or quantity is None or datacenter_id is None:
+        return jsonify({"error": "Missing required fields"}), 400
 
     add_item(
-        data["item_name"],
-        data["quantity"],
-        data["datacenter_id"]
+        item_name,
+        quantity,
+        datacenter_id
     )
 
     db = get_db()
@@ -337,21 +365,20 @@ def api_add_item():
         VALUES (?, ?)
         """,
         (
-            session["username"],
-            f"Added item '{data['item_name']}' "
-            f"(Qty {data['quantity']}) "
-            f"to datacenter {data['datacenter_id']}"
+            audit_username(),
+            f"Added item '{item_name}' "
+            f"(Qty {quantity}) "
+            f"to datacenter {datacenter_id}"
         )
     )
 
     db.commit()
 
-    return jsonify({"message": "Item added"}), 201
+    return jsonify({"message": "Item added successfully"}), 201
 
 
 # 🔥 FIXED: excludes soft-deleted items
 @app.route("/api/items")
-@login_required
 def api_get_items():
     db = get_db()
 
@@ -372,27 +399,49 @@ def api_get_items():
     ])
 
 
+@app.route("/api/item", methods=["PUT"])
 @app.route("/api/item/<int:id>", methods=["PUT"])
-@login_required
-def api_update_item(id):
-    data = request.get_json()
+def api_update_item(id=None):
+    data = request.get_json() or {}
+    quantity = data.get("quantity")
 
-    updated = update_item(
-        id,
-        data.get("quantity"),
-        data.get("datacenter_id")
-    )
+    if quantity is None:
+        return jsonify({"error": "Missing required fields"}), 400
+
+    db = get_db()
+
+    if id is None:
+        item_name = data.get("item_name") or data.get("itemName")
+        if not item_name:
+            return jsonify({"error": "Missing required fields"}), 400
+
+        existing = db.execute(
+            "SELECT id, datacenter_id FROM inventory WHERE item_name = ? AND deleted_at IS NULL ORDER BY id DESC LIMIT 1",
+            (item_name,),
+        ).fetchone()
+    else:
+        existing = db.execute(
+            "SELECT id, datacenter_id FROM inventory WHERE id = ? AND deleted_at IS NULL",
+            (id,),
+        ).fetchone()
+
+    if not existing:
+        return jsonify({"error": "Not found"}), 404
+
+    id = existing["id"]
+    datacenter_id = data.get("datacenter_id", existing["datacenter_id"])
+
+    updated = update_item(id, quantity, datacenter_id)
     if updated:
-        db = get_db()
         db.execute(
             """
             INSERT INTO actionsAudit(username, action)
             VALUES (?, ?)
             """,
             (
-                session["username"],
+                audit_username(),
                 f"Updated item {id} "
-                f"(Qty={data['quantity']}, Datacenter={data['datacenter_id']})"
+                f"(Qty={quantity}, Datacenter={datacenter_id})"
             )
         )
         db.commit()
@@ -401,11 +450,10 @@ def api_update_item(id):
     if updated == 0:
         return jsonify({"error": "Not found"}), 404
 
-    return jsonify({"message": "Updated"})
+    return jsonify({"message": "Item updated successfully"})
 
 
 @app.route("/api/item/<int:id>", methods=["DELETE"])
-@login_required
 def api_delete_item(id):
     db = get_db()
 
@@ -423,12 +471,12 @@ def api_delete_item(id):
 
     db.execute(
         "INSERT INTO actionsAudit(username, action) VALUES (?, ?)",
-        (session["username"], f"Soft deleted item {id}")
+        (audit_username(), f"Soft deleted item {id}")
     )
 
     db.commit()
 
-    return jsonify({"message": "Item moved to recycle bin"})
+    return jsonify({"message": "Item deleted successfully"})
 
 @app.route("/api/item/restore/<int:id>", methods=["POST"])
 @login_required
@@ -504,10 +552,11 @@ def hard_delete_item(id):
 # -------------------------
         
 @app.route("/api/datacenter", methods=["POST"])
-@login_required
 def api_add_datacenter():
+    data = request.get_json() or {}
 
-    data = request.get_json()
+    if data.get("location") is None or data.get("capacity") is None:
+        return jsonify({"error": "Missing required fields"}), 400
 
     add_datacenter(
         data["location"],
@@ -522,7 +571,7 @@ def api_add_datacenter():
         VALUES (?, ?)
         """,
         (
-            session["username"],
+            audit_username(),
             f"Added datacenter '{data['location']}' "
             f"with capacity {data['capacity']}"
         )
@@ -530,11 +579,10 @@ def api_add_datacenter():
 
     db.commit()
 
-    return jsonify({"message":"Datacenter added"}), 201
+    return jsonify({"message": "Data Center added successfully"}), 201
 
 # 🔥 FIXED: excludes soft-deleted items
 @app.route("/api/datacenters")
-@login_required
 def api_get_datacenters():
     db = get_db()
 
@@ -555,9 +603,11 @@ def api_get_datacenters():
 
 
 @app.route("/api/datacenter/<int:id>", methods=["PUT"])
-@login_required
 def api_update_datacenter(id):
-    data = request.get_json()
+    data = request.get_json() or {}
+
+    if data.get("capacity") is None:
+        return jsonify({"error": "Missing required fields"}), 400
 
     updated = update_datacenter(
         id,
@@ -576,18 +626,17 @@ def api_update_datacenter(id):
             VALUES (?, ?)
             """,
             (
-                session["username"],
+                audit_username(),
                 f"Updated datacenter {id} "
                 f"(Capacity={data['capacity']})"
             )
         )
 
         db.commit()
-        return jsonify({"message": "Updated"})
+        return jsonify({"message": "Data Center updated successfully"})
 
 
 @app.route("/api/datacenter/<int:id>", methods=["DELETE"])
-@login_required
 def api_delete_datacenter(id):
     db = get_db()
 
@@ -605,12 +654,12 @@ def api_delete_datacenter(id):
 
     db.execute(
         "INSERT INTO actionsAudit(username, action) VALUES (?, ?)",
-        (session["username"], f"Soft deleted datacenter {id}")
+        (audit_username(), f"Soft deleted datacenter {id}")
     )
 
     db.commit()
 
-    return jsonify({"message": "Datacenter moved to recycle bin"})
+    return jsonify({"message": "Data Center deleted successfully"})
 
 @app.route("/api/datacenters/deleted")
 @login_required

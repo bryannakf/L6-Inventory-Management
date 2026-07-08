@@ -1,7 +1,3 @@
-SELECT * FROM users 
-WHERE username='admin' OR '1'='1';
-
--- Run this using a SQLite browser or via Python script
 CREATE TABLE IF NOT EXISTS datacenter (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     location TEXT NOT NULL,

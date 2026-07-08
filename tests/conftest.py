@@ -4,21 +4,26 @@ import sqlite3
 
 import pytest
 from werkzeug.security import generate_password_hash
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
 from app import app as flask_app
 from app import db
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'inventory_management'))
 
 CREATE_TABLES_SQL = """
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE,
     password TEXT NOT NULL,
-    role TEXT DEFAULT 'user'
+    role TEXT DEFAULT 'user',
+    must_change_password INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS datacenter (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     location TEXT NOT NULL,
+    deleted_at DATETIME,
     capacity INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS inventory (
@@ -26,7 +31,14 @@ CREATE TABLE IF NOT EXISTS inventory (
     item_name TEXT NOT NULL,
     quantity INTEGER NOT NULL,
     datacenter_id INTEGER NOT NULL,
+    deleted_at DATETIME,
     FOREIGN KEY (datacenter_id) REFERENCES datacenter(id)
+);
+CREATE TABLE IF NOT EXISTS actionsAudit (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL,
+    action TEXT NOT NULL,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 """
 
@@ -46,12 +58,12 @@ def app():
     conn.executescript(CREATE_TABLES_SQL)
 
     conn.execute(
-        'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
-        ('admin', generate_password_hash('adminpass'), 'admin'),
+        'INSERT INTO users (username, password, role, must_change_password) VALUES (?, ?, ?, ?)',
+        ('admin', generate_password_hash('adminpass'), 'admin', 0),
     )
     conn.execute(
-        'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
-        ('testuser', generate_password_hash('userpass'), 'user'),
+        'INSERT INTO users (username, password, role, must_change_password) VALUES (?, ?, ?, ?)',
+        ('testuser', generate_password_hash('userpass'), 'user', 0),
     )
     conn.execute(
         'INSERT INTO datacenter (location, capacity) VALUES (?, ?)',
@@ -76,31 +88,3 @@ def app():
 @pytest.fixture
 def client(app):
     return app.test_client()
-
-@pytest.fixture
-def app():
-
-    flask_app.config.update(
-        TESTING=True,
-        SECRET_KEY="test-secret-key"
-    )
-
-    return flask_app
-
-
-@pytest.fixture
-def client(app):
-    return app.test_client()
-
-# @pytest.fixture
-# def app():
-
-#     import db
-
-#     db.DATABASE = "tests/test_database.db"
-
-#     app = create_app()
-
-#     app.config["TESTING"] = True
-
-#     yield app
