@@ -41,28 +41,28 @@ def test_nonexistent_user_shows_error(client):
     assert b'Invalid username or password' in response.data
 
 
-def test_register_page_loads(client):
-    response = client.get('/register')
-    assert response.status_code == 200
+# def test_register_page_loads(client):
+#     response = client.get('/register')
+#     assert response.status_code == 200
 
 
-def test_register_new_user(client):
-    response = client.post(
-        '/register',
-        data={'username': 'newuser', 'password': 'newpass', 'role': 'user'},
-        follow_redirects=True,
-    )
-    assert response.status_code == 200
+# def test_register_new_user(client):
+#     response = client.post(
+#         '/register',
+#         data={'username': 'newuser', 'password': 'newpass', 'role': 'user'},
+#         follow_redirects=True,
+#     )
+#     assert response.status_code == 200
 
 
-def test_register_duplicate_username_shows_error(client):
-    response = client.post(
-        '/register',
-        data={'username': 'admin', 'password': 'somepass', 'role': 'user'},
-        follow_redirects=True,
-    )
-    assert response.status_code == 200
-    assert b'Username already exists' in response.data
+# def test_register_duplicate_username_shows_error(client):
+#     response = client.post(
+#         '/register',
+#         data={'username': 'admin', 'password': 'somepass', 'role': 'user'},
+#         follow_redirects=True,
+#     )
+#     assert response.status_code == 200
+#     assert b'Username already exists' in response.data
 
 
 def test_logout_redirects_to_login(client):

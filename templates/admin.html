@@ -20,12 +20,14 @@
       <button onclick="location.href='{{ url_for('actionsAudit') }}'">
         Audit Logs
       </button>
+      {% if session.get('role') == 'admin' %}
       <button onclick="location.href='{{ url_for('create_user') }}'">
         Create User
       </button>
       <button onclick="location.href='{{ url_for('change_password') }}'">
         Change Password
       </button>
+      {% endif %}
     </div>
   </body>
 </html>
