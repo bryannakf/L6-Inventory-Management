@@ -20,7 +20,7 @@ app.config["SECRET_KEY"] = os.environ.get(
     "test-secret-key-for-development"
 )
 
-app.secret_key = app.config["SECRET_KEY"]
+app.secret_key = os.environ.get("SECRET_KEY")
 
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
@@ -105,7 +105,7 @@ def admin_required(f):
 # -------------------------
 @app.route("/")
 def index():
-    return redirect(url_for("register"))
+    return redirect(url_for("login"))
 
 # -------------------------
 # REGISTER
