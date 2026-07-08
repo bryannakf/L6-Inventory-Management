@@ -10,7 +10,11 @@
   </head>
   <body>
     <div class="navbar">
-      <button onclick="location.href='{{ url_for('logout') }}'">Log Out</button>
+      <button
+        onclick="if (confirm('Are you sure you want to log out?')) { window.location.href='{{ url_for('logout') }}'; }"
+      >
+        Log Out
+      </button>
       {% if session.get('role') == 'admin' %}
       <button onclick="location.href='{{ url_for('admin') }}'">
         Home Page
@@ -32,10 +36,11 @@
       <button onclick="location.href='{{ url_for('create_user') }}'">
         Create User
       </button>
+      {% endif %}
+
       <button onclick="location.href='{{ url_for('change_password') }}'">
         Change Password
       </button>
-      {% endif %}
     </div>
     <div class="subtitle">
       <h2>Datacenter Management</h2>

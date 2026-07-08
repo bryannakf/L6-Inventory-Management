@@ -10,7 +10,11 @@
   <body>
     <div class="homepage">
       <h2>Welcome {{ username }}!</h2>
-      <button onclick="location.href='{{ url_for('logout') }}'">Log Out</button>
+      <button
+        onclick="if (confirm('Are you sure you want to log out?')) { window.location.href='{{ url_for('logout') }}'; }"
+      >
+        Log Out
+      </button>
       <button onclick="location.href='{{ url_for('inventory') }}'">
         Inventory Management
       </button>
