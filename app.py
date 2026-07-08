@@ -759,6 +759,8 @@ def create_user():
 
     return render_template("create_user.html")
 
+
+
 application = app
 
 if __name__ == "__main__":

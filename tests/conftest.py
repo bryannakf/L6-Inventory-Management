@@ -4,6 +4,7 @@ import sqlite3
 
 import pytest
 from werkzeug.security import generate_password_hash
+from app import db
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'inventory_management'))
 
@@ -74,3 +75,16 @@ def app():
 @pytest.fixture
 def client(app):
     return app.test_client()
+
+# @pytest.fixture
+# def app():
+
+#     import db
+
+#     db.DATABASE = "tests/test_database.db"
+
+#     app = create_app()
+
+#     app.config["TESTING"] = True
+
+#     yield app
