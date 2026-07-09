@@ -20,7 +20,8 @@ app.config["SECRET_KEY"] = os.environ.get(
     "test-secret-key-for-development"
 )
 
-app.secret_key = os.environ.get("SECRET_KEY")
+app.secret_key = app.config["SECRET_KEY"]
+
 
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
@@ -40,11 +41,25 @@ def init_db():
         db.executescript(f.read().decode('utf8'))
 
     existing_admin = db.execute(
-        "SELECT * FROM users WHERE role = ?",
+        "SELECT id FROM users WHERE role = ?",
         ("admin",)
     ).fetchone()
 
     if existing_admin is None:
+
+        admin_username = os.environ.get(
+            "ADMIN_USERNAME"
+        )
+
+        admin_password = os.environ.get(
+            "ADMIN_PASSWORD"
+        )
+
+        if not admin_username or not admin_password:
+            raise Exception(
+                "ADMIN_USERNAME and ADMIN_PASSWORD environment variables must be set"
+            )
+
         db.execute(
             """
             INSERT INTO users
@@ -52,10 +67,8 @@ def init_db():
             VALUES (?, ?, ?, ?)
             """,
             (
-                "admin",
-                generate_password_hash(
-                    os.environ.get("ADMIN_PASSWORD")
-                ),
+                admin_username,
+                generate_password_hash(admin_password),
                 "admin",
                 1
             )

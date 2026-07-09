@@ -4,7 +4,10 @@ from flask import g
 
 def get_db():
     if "db" not in g:
-        db_path = os.environ.get("DATABASE_PATH", "/app/data/data.db")
+        db_path = os.environ.get(
+            "DATABASE_PATH",
+            os.path.join(os.getcwd(), "instance", "data.db")
+        )
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
 
         g.db = sqlite3.connect(db_path)

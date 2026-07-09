@@ -88,3 +88,10 @@ def app():
 @pytest.fixture
 def client(app):
     return app.test_client()
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter_state():
+    import app as app_module
+
+    app_module.limiter.reset()
