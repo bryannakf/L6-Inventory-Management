@@ -34,14 +34,34 @@ init_app(app)
 # DB INITIALISATION
 
 def init_db():
-
     db = get_db()
 
     with current_app.open_resource('schema.sql') as f:
         db.executescript(f.read().decode('utf8'))
 
-    db.commit()
+    existing_admin = db.execute(
+        "SELECT * FROM users WHERE role = ?",
+        ("admin",)
+    ).fetchone()
 
+    if existing_admin is None:
+        db.execute(
+            """
+            INSERT INTO users
+            (username, password, role, must_change_password)
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                "admin",
+                generate_password_hash(
+                    os.environ.get("ADMIN_PASSWORD")
+                ),
+                "admin",
+                1
+            )
+        )
+
+    db.commit()
 
 
 @app.route("/debug-users")
