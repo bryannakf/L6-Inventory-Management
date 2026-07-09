@@ -1,3 +1,26 @@
+"""
+Program: L6 Inventory Management Web Application
+Filename: app.py
+Author: Student Project Team
+Course: Software Engineering
+Version: 1.0
+Date: 09/07/2026
+
+Disclaimer:
+The following source code is the sole work of the author(s) unless otherwise stated.
+
+References:
+[1] Flask Documentation (2026) [online] Available from: https://flask.palletsprojects.com/
+    [Accessed 09/07/2026].
+[2] Flask-Limiter Documentation (2026) [online] Available from:
+    https://flask-limiter.readthedocs.io/
+    [Accessed 09/07/2026].
+[3] Werkzeug Security Helpers (2026) [online] Available from:
+    https://werkzeug.palletsprojects.com/
+    [Accessed 09/07/2026].
+"""
+
+# <-***** Flask/Werkzeug SDK usage [1][3] - START
 from flask import Flask, current_app, render_template, request, jsonify, session, redirect, url_for, flash
 from db import get_db, close_db, init_app
 import db
@@ -11,6 +34,7 @@ import re
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from datetime import datetime
+# ->***** Flask/Werkzeug SDK usage [1][3] - END
 
 app = Flask(__name__)
 limiter = Limiter(get_remote_address, app=app)
@@ -32,7 +56,7 @@ app.config.update(
 init_app(app)
 
 
-# DB INITIALISATION
+# DB Initialization
 
 def init_db():
     db = get_db()
@@ -40,43 +64,14 @@ def init_db():
     with current_app.open_resource('schema.sql') as f:
         db.executescript(f.read().decode('utf8'))
 
-    existing_admin = db.execute(
-        "SELECT id FROM users WHERE role = ?",
-        ("admin",)
-    ).fetchone()
-
-    if existing_admin is None:
-
-        admin_username = os.environ.get(
-            "ADMIN_USERNAME"
-        )
-
-        admin_password = os.environ.get(
-            "ADMIN_PASSWORD"
-        )
-
-        if not admin_username or not admin_password:
-            raise Exception(
-                "ADMIN_USERNAME and ADMIN_PASSWORD environment variables must be set"
-            )
-
-        db.execute(
-            """
-            INSERT INTO users
-            (username, password, role, must_change_password)
-            VALUES (?, ?, ?, ?)
-            """,
-            (
-                admin_username,
-                generate_password_hash(admin_password),
-                "admin",
-                1
-            )
-        )
-
     db.commit()
 
+@app.cli.command("initdb")
+def initdb_command():
+    init_db()
+    print("Database initialized.")
 
+# Utility route for quick local diagnostics.
 @app.route("/debug-users")
 def debug_users():
     db = get_db()
@@ -88,11 +83,6 @@ def ensure_db():
         db = get_db()
         db.executescript(open(os.path.join(os.path.dirname(__file__), "schema.sql")).read())
         db.commit()
-
-@app.cli.command("initdb")
-def initdb_command():
-    init_db()
-    print("Database initialized.")
 
 #create default admin user if not exists
 @app.cli.command("create-admin")
@@ -123,6 +113,7 @@ def create_admin():
 
     print("Administrator created")
 
+#role-based access control decorators: 
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -145,9 +136,7 @@ def admin_required(f):
     return wrapper
 
 
-# -------------------------
-# HOME
-# -------------------------
+# Public entry and authentication routes.
 @app.route("/")
 def index():
     return redirect(url_for("login"))
@@ -173,11 +162,10 @@ def register():
             flash("Username already exists")
 
     return render_template("register.html")
-# -------------------------
-# LOGIN
-# -------------------------
+
 
 @app.route("/login", methods=["GET", "POST"])
+# <-***** Flask-Limiter rate limit integration [2]
 @limiter.limit("15 per minute")
 def login():
     db = get_db()
@@ -186,7 +174,6 @@ def login():
         username = request.form["username"]
         password = request.form["password"]
 
-        # Look up the user
         user = db.execute(
             "SELECT * FROM users WHERE username = ?",
             (username,)
@@ -203,7 +190,6 @@ def login():
                 flash("You must change your temporary password before continuing.")
                 return redirect(url_for("change_password"))
 
-           # flash("Login successful!")
 
             # Redirect based on role
             if user["role"] == "admin":
@@ -256,17 +242,13 @@ def change_password():
         )
 
     return render_template("change_password.html")
-# -------------------------
-# LOGOUT
-# -------------------------
+
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("login"))
 
-# -------------------------
-# PAGES
-# -------------------------
+# Auth-protected page routes.
 @app.route("/admin")
 def admin():
     if session.get("role") != "admin":
@@ -310,10 +292,8 @@ def actionsAudit():
     #return redirect(url_for("login"))
     return render_template("actionsAudit.html")
 
-# -------------------------
-# INVENTORY API
-# -------------------------
-#add item
+
+# Inventory API routes (CRUD + recovery).
 
 @app.route("/api/item", methods=["POST"])
 def api_add_item():
@@ -351,7 +331,6 @@ def api_add_item():
     return jsonify({"message": "Item added successfully"}), 201
 
 
-# 🔥 FIXED: excludes soft-deleted items
 @app.route("/api/items")
 def api_get_items():
     db = get_db()
@@ -521,9 +500,8 @@ def hard_delete_item(id):
         return jsonify({"error": "Item not found"}), 404
 
     return jsonify({"message": "Item permanently deleted"})
-# -------------------------
-# DATACENTER API
-# -------------------------
+
+# Datacenter API routes (CRUD + recovery).
         
 @app.route("/api/datacenter", methods=["POST"])
 def api_add_datacenter():
@@ -555,7 +533,6 @@ def api_add_datacenter():
 
     return jsonify({"message": "Data Center added successfully"}), 201
 
-# 🔥 FIXED: excludes soft-deleted items
 @app.route("/api/datacenters")
 def api_get_datacenters():
     db = get_db()
@@ -705,9 +682,7 @@ def hard_delete_datacenter(id):
 
     return jsonify({"message": "Datacenter permanently deleted"})
 
-# -------------------------
-# AUDIT LOG
-# -------------------------
+# Audit log API route.
 @app.route("/api/actionsAudit")
 @login_required
 def api_actions():
@@ -727,7 +702,7 @@ def api_actions():
         for r in rows
     ])
 
-#create user
+# Admin user-management route.
 @app.route("/admin/create-user", methods=["GET", "POST"])
 @login_required
 @admin_required

@@ -1,3 +1,22 @@
+"""
+Program: L6 Inventory Management Web Application
+Filename: db.py
+Author: Student Project Team
+Course: Software Engineering
+Version: 1.0
+Date: 09/07/2026
+
+Disclaimer:
+The following source code is the sole work of the author(s) unless otherwise stated.
+
+References:
+[1] Flask Documentation (2026) [online] Available from: https://flask.palletsprojects.com/
+    [Accessed 09/07/2026].
+[2] Python sqlite3 Documentation (2026) [online] Available from:
+    https://docs.python.org/3/library/sqlite3.html
+    [Accessed 09/07/2026].
+"""
+
 import os
 import sqlite3
 from flask import g
