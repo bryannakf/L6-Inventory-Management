@@ -1,0 +1,165 @@
+# L6 Inventory Management
+
+Flask-based inventory and datacenter management application with role-based access control, audit logging, soft delete and restore flows, and automated tests.
+
+## Features
+
+- Authentication with role-aware routing for admin and user views
+- Session-based access control for protected pages and selected APIs
+- Login rate limiting on the login route
+- Inventory management APIs (create, list, update, soft delete, restore, hard delete)
+- Datacenter management APIs (create, list, update, soft delete, restore, hard delete)
+- Audit logging for key actions
+- Admin user creation flow with temporary-password enforcement
+- Pytest test suite covering login, inventory, datacenter, and security behavior
+
+## Tech Stack
+
+- Python 3
+- Flask
+- Flask-Limiter
+- SQLite
+- Pytest
+
+## Project Structure
+
+- app.py: Main Flask app, routes, auth logic, and API handlers
+- db.py: Database connection and Flask app teardown integration
+- schema.sql: Database schema and seed inserts
+- models/: Data-access helpers for inventory and datacenter
+- templates/: HTML templates for UI pages
+- static/: Frontend assets (CSS and JavaScript)
+- tests/: Pytest suite and test fixtures
+- Dockerfile: Container image definition
+
+## Prerequisites
+
+- Python 3.11+ (3.12 recommended)
+- pip
+- Optional: Docker Desktop
+
+## Local Setup
+
+1. Create and activate a virtual environment.
+
+   Windows PowerShell:
+
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+
+2. Install dependencies.
+
+   pip install -r requirements.txt
+
+3. Set environment variables.
+
+   Windows PowerShell:
+
+   $env:FLASK_APP = "app.py"
+	$env:SECRET_KEY = "change-this-to-a-strong-random-secret"
+   $env:DATABASE_PATH = "$(Get-Location)\instance\data.db"
+
+4. Initialize the database.
+
+   flask initdb
+
+5. Create an admin user (interactive command).
+
+   flask create-admin
+
+6. Run the app.
+
+   flask run
+
+7. Open in browser.
+
+   http://127.0.0.1:5000
+
+## Docker Setup
+
+1. Build image.
+
+   docker build -t flask-app .
+
+2. Run container.
+
+   docker run -it -p 8001:5000 -e SECRET_KEY=your-strong-secret flask-app
+
+3. Open in browser.
+
+   http://127.0.0.1:8001
+
+Note: If you want persistent database storage in Docker, mount a host path to a container directory and set DATABASE_PATH to that mounted location.
+
+## Running Tests
+
+Run full suite:
+
+python -m pytest -q
+
+Run a single test file:
+
+python -m pytest tests\test_security.py -q
+
+Run selected files:
+
+python -m pytest tests\test_login.py tests\test_inventory.py tests\test_datacenter.py -q
+
+## Environment Variables
+
+- SECRET_KEY: Flask session signing key (required for secure session behavior)
+- DATABASE_PATH: SQLite database file path
+- FLASK_APP: Flask entrypoint (app.py)
+
+## Key Routes
+
+Pages:
+
+- /login
+- /logout
+- /change-password
+- /admin
+- /user
+- /inventory
+- /datacenter
+- /actionsAudit
+- /admin/create-user
+
+Inventory API:
+
+- POST /api/item
+- GET /api/items
+- PUT /api/item or /api/item/<id>
+- DELETE /api/item/<id>
+- POST /api/item/restore/<id>
+- GET /api/items/deleted
+- DELETE /api/item/hard-delete/<id>
+
+Datacenter API:
+
+- POST /api/datacenter
+- GET /api/datacenters
+- PUT /api/datacenter/<id>
+- DELETE /api/datacenter/<id>
+- POST /api/datacenter/restore/<id>
+- GET /api/datacenters/deleted
+- DELETE /api/datacenter/hard-delete/<id>
+
+Audit API:
+
+- GET /api/actionsAudit
+
+## Security Notes
+
+- Session cookies are configured as HttpOnly, Secure, and SameSite=Lax
+- Login endpoint is rate-limited
+- Admin-only endpoints are protected by role checks
+
+## Troubleshooting
+
+- Session errors during tests usually indicate missing SECRET_KEY configuration
+- If port 5000 is in use, run with a different port:
+
+  flask run --port 5001
+
+- If SQLite path errors occur, ensure DATABASE_PATH points to a writable location
